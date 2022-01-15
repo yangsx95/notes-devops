@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: say-hello
+spec:
+  template:
+    spec:
+      containers:
+        - name: say-hello
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          command: ["echo", "hello"]
+      restartPolicy: Never
+  # 回退限制，可以指定重试几次后标记为失败， 默认为6次
+  backoffLimit: 3

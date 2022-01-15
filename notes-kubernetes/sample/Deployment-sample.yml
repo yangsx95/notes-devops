@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+spec:
+  # 副本数1
+  replicas: 1
+  template:
+    metadata:
+      name: web
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+  # 选择器，通过labels用来指定控制器要控制的资源，这里是控制名称为web的pod
+  selector:
+    matchLabels:
+      app: web

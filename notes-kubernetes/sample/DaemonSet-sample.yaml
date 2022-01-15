@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-daemonset
+  labels:
+    app: daemonset-pod
+spec:
+  selector:
+    matchLabels:
+      app: daemonset-pod
+  template:
+    metadata:
+      name: daemonset-pod
+      labels:
+        app: daemonset-pod
+    spec:
+      containers:
+        - name: daemonset-container
+          image: nginx:1.21.1
+
+# kubectl get DaemonSet 查询所有的DaemonSet

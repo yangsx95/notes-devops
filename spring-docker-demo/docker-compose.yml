@@ -1,0 +1,20 @@
+version: '3' # 版本
+
+services: # 定义多个服务
+  webapp:
+    # 服务配置 
+    # 镜像通过dockerfile创建
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # 启动顺序,webapp需要先等待数据mysql启动完毕后才可以启动
+    depends_on:
+      - mysql
+    # 容器名称
+    container_name: spring-docker-demo
+    # 端口配置
+    ports: 
+      - 8080:8080
+  mysql:
+    # 直接指定镜像
+    image: mysql/mysql-server:latest

@@ -1,0 +1,23 @@
+# 就绪检测探针，readiness
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-pod
+  namespace: default
+  labels:
+    app: lifecycle-pod
+spec:
+  containers:
+    - name: lifecycle-container
+      image: nginx:1.21.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 80
+      lifecycle:
+        postStart:
+          exec:
+            command: ["/bin/sh", "-c", "echo Hello from the postStart handler"]
+        preStop:
+          exec:
+            command: ["/bin/sh", "-c", "echo Hello from the preStop handler"]
+  restartPolicy: Always

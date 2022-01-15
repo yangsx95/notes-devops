@@ -1,0 +1,57 @@
+# 创建HeadlessService用于发布StatefulSet中Pod的IP和Port
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+    - port: 80
+      name: web
+  clusterIP: None # 标志此Service为HeadlessService
+  selector: # 关联pod
+    app: nginx
+---
+# 创建StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx" # 指定HeadlessService
+  replicas: 2 # 副本数 2
+  selector: # 与Pod进行绑定
+    matchLabels:
+      app: nginx
+  template: # 定义Pod模板
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers: # 定义容器
+        - name: nginx
+          image: nginx:1.21.1
+          ports:
+            - containerPort: 80
+              name: web
+          volumeMounts: # 挂载卷，name指定卷名称，mountPath指定要挂载的容器路径
+            - name: www
+              mountPath: /usr/share/nginx/html
+  volumeClaimTemplates: # 定义申领卷，动态方式
+    - metadata:
+        name: www
+      spec:
+        accessModes: [ "ReadWriteOnce" ] # 访问模式，只可以被一个容器访问
+        resources:
+          requests:
+            storage: 1Gi # 申领1g空间
+
+# kubectl get pods -w -l app=nginx  查看StatefulSet的Pod的创建情况
+# 参数-w表示watch实时监控 -l表示labels表示根据标签过滤资源
+
+# 顺序创建：StatefulSet拥有多个副本时，会按照顺序创建，web-0处于Running或者Ready状态，web-1才会启动
+# 稳定网络标志：使用kubectl exec 循环获取hostname for i in 0 1; do kubectl exec "web-$i" -- sh -c 'hostname'; done
+# 稳定的存储：获取web0以及web1的pvc  kubectl get pvc -l app=nginx
+# 扩容副本为5：kubectl scale sts web --replicas=5
+# 缩容副本为3：kubectl patch sts web -p '{"spec":{"replicas":3}}'

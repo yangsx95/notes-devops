@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  namespace: default
+spec:
+  # 节点选择器
+  nodeSelector: 
+    node_env: dev
+  affinity:
+    # #########节点亲和性
+    nodeAffinity:
+      # IgnoredDuringExecution：如果节点的标签在运行时发生变更，从而不再满足 Pod 上的亲和性规则，那么 Pod 将仍然继续在该节点上运行
+      # 硬亲和性：将 Pod 调度到一个节点上 必须满足的规则
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: env_role
+                operator: In
+                values:
+                  - dev
+                  - test
+      # 软亲和性：调度器将尝试执行但不能保证的偏好，意思就是如果没有合适的Node，仍然会运行Pod，如果有则优先选择匹配的节点
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 1
+          preference:
+            matchExpressions:
+              - key: hasComponent
+                operator: NotIn # 使用NotIn来保证反亲和性
+                values:
+                  - mysql
+  # 污点容忍，容忍某些节点的容忍
+  tolerations:
+    - key: "key" # 污点的key
+      value: "value" # 污点的value
+      effect: NoSchedule # 污点值
+      operator: Equal # 如果是key污点
+  containers:
+    - name: nginx
+      image: nginx:1.21.1
+      # #########镜像拉取策略
+      # IfNotPresent 默认策略，镜像在宿主机不存在才拉取
+      # Always 每次创建Pod都会重新拉取镜像
+      # Never Pod永远不会主动拉取这个镜像
+      imagePullPolicy: IfNotPresent
+      # #########资源限制
+      resources:
+        # 最低需要的内存与cpu
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        # 最高使用的内存与cpu
+        limits:
+          memory: "128Mi"
+          cpu: "250m" # cpu 1core==1000m，250m==0.4个c 
+      # ########健康检查
+      # 存活检查，如果检查失败，将杀死容器，根据Pod的restartPolicy来决定是否继续重启容器
+      # 检查共有三种方式： exec 命令行返回状态为0，httpGet http请求返回状态码为200-400，tcpSocket socket建立成功
+      livenessProbe:
+        exec:
+          # 执行检查的命令（linux 查看当前状态码 echo $?， 以下命令需要保证文件/tmp/healthy存在）
+          command:
+            - cat 
+            - /tmp/healthy
+      # 就绪检查，检查服务是否可以正常提供
+      readinessProbe:
+        httpGet:
+          port: 80
+        # 5s后进行就绪检查
+        initialDelaySeconds: 5
+        # 每隔五秒执行一次就绪检查
+        periodSeconds: 5
+  # ########重启策略
+  # Always 当容器终止退出后，总是重启，适用于需要不断提供服务的容器，比如nginx 或者业务容器
+  # OnFailure 当容器异常退出，也就是状态码非0时，才需要重启容器
+  # Never 当容器退出，从不重启容器   （ OnFailure和Never适用于批量任务，指需要执行成功一次 ） 
+  restartPolicy: Always

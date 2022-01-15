@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  namespace: default
+  name: say-hello-permin
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: say-hello-permin
+              image: busybox
+              imagePullPolicy: IfNotPresent
+              # command用于指定命令，相当于docker的entryPoint
+              # args 则是command的参数，相当于docker中的cmd
+              command: 
+                - /bin/sh
+              args:  
+                - -c 
+                - date; echo hello
+          restartPolicy: OnFailure
+  schedule: "*/1 * * * *"

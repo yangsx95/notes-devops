@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  clusterIP: None  
+  selector:
+    name: jenkins
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+    - name: agent
+      port: 50000
+      protocol: TCP
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jenkins
+  namespace: jenkins
+  labels:
+    name: jenkins
+spec:
+  serviceName: jenkins # 指定service
+  selector: # 指定statefulSet要管理的Pod
+    matchLabels:
+      name: jenkins
+  replicas: 1 # 副本数目
+  updateStrategy: # 升级策略，滚动升级
+    type: RollingUpdate
+  template: # 定义pod模板
+    metadata:
+      name: jenkins
+      namespace: jenkins
+      labels:
+        name: jenkins
+    spec:
+      terminationGracePeriodSeconds: 10 # 10s内状态Terminating还未结束，就会被强制杀死
+      serviceAccountName: jenkins
+      containers:
+        - name: jenkins
+          image: mlucken/jenkins-arm:2.235.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+            - containerPort: 50000
+          resources:
+            limits: # 最高会使用的cpu和内存
+              cpu: 1Gi
+              memory: 1Gi
+            requests: # 最低需要cpu和内存
+#              cpu: 0.5Gi 
+              cpu: 300m
+              memory: 500Mi
+          env: # 镜像的环境变量
+            - name: LIMITS_MEMORY
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+                  divisor: 1Mi
+            - name: JAVA_OPTS
+              value: -Xmx$(LIMITS_MEMORY)m -XshowSettings:vm -Dhudson.slaves.NodeProvisioner.initialDelay=0 -Dhudson.slaves.NodeProvisioner.MARGIN=50 -Dhudson.slaves.NodeProvisioner.MARGIN0=0.85
+          volumeMounts: # 挂载容器 /var/jenkins_home 到存储卷 jenkins-home下
+            - name: jenkins-home
+              mountPath: /var/jenkins_home
+          livenessProbe: # 存活检查
+            httpGet:
+              path: /login
+              port: 8080
+            initialDelaySeconds: 60 # 启动后60s后再进行存活检查
+            timeoutSeconds: 5 # 发送/login请求超时5s则检查失败
+            failureThreshold: 12 # 失败的临界点，也就是存活检查最多发送的次数
+            periodSeconds: 10 # 每次重新检测的间隔时间，默认为10s
+          readinessProbe: # 就绪检测
+            httpGet:
+              path: /login
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 12 # ~2 minutes
+      securityContext:
+        fsGroup: 1000
+  volumeClaimTemplates: # 定义申领卷模板
+    - metadata:
+        name: jenkins-home
+        namespace: jenkins
+      spec:
+        accessModes: 
+          - ReadWriteOnce
+        resources: 
+          requests:
+            storage: 1Gi

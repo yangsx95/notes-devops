@@ -1,0 +1,22 @@
+# 就绪检测探针，readiness
+apiVersion: v1
+kind: Pod
+metadata:
+  name: readiness-httpget-pod
+  namespace: default
+  labels:
+    app: readiness-httpget-pod
+spec:
+  containers:
+    - name: rediness-httpget-container
+      image: nginx:1.21.1
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 80
+      readinessProbe:
+        httpGet:
+          port: 80
+          path: /
+        initialDelaySeconds: 1 # 就需检测探针初始化执行延时：容器启动后，延时1s执行检测
+        periodSeconds: 3 # 每隔3s检测一次
+  restartPolicy: Always

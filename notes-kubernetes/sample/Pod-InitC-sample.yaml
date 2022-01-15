@@ -1,0 +1,41 @@
+# Pod 初始化容器
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tomcat-initc
+  labels:
+    app: tomcat-initc
+spec:
+  volumes:
+    - name: tomcat-initc-volume
+      emptyDir: {}
+  initContainers:
+    # 为tomcat初始化数据的初始化容器，使用共享数据卷
+    - name: init-html
+      image: busybox:latest
+      imagePullPolicy: IfNotPresent
+      command: ['sh', '-c','mkdir -p /usr/local/tomcat/webapps && echo ''<h1>你好</h1>'' >> /usr/local/tomcat/webapps/index.html']
+      volumeMounts:
+        - mountPath: /usr/local/tomcat/webapps/
+          name: tomcat-initc-volume
+  containers:
+    - name: tomcat-initc
+      image: tomcat
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - mountPath: /usr/local/tomcat/webapps/
+          name: tomcat-initc-volume
+  restartPolicy: Always
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: tomcat-initc-svc
+spec:
+  selector:
+    app: tomcat-initc
+  ports:
+    - port: 8080
+  type: NodePort
